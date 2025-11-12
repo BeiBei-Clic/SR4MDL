@@ -315,7 +315,7 @@ class Trainer:
             record['loss'] = loss.item()
             record['clip_loss'] = clip_loss.item()
             record['pred_loss'] = pred_loss.item()
-            record['speed'] = self.timer.speed()
+            record['speed'] = self.timer.speed
             record['time'] = self.named_timer.time
 
             log['RMSE'] = f'{record["RMSE"]:.2f}'
@@ -437,8 +437,18 @@ class Trainer:
         axes['Speed'].set_title(f'Speed (Equation / s) ({y[-100:].mean():.2f}±{y[-100:].std():.2f})')
 
         for rec in self.records:
-            if 'time' in rec: break
-        if 'time' in rec:
+            if 'time' in rec: 
+                # 检查time是字典还是float
+                if isinstance(rec['time'], dict):
+                    break
+                else:
+                    # 如果是float，则跳过时间绘图部分
+                    rec_time_is_dict = False
+                    break
+        else:
+            rec_time_is_dict = False
+            
+        if 'time' in rec and rec_time_is_dict:
             x = []
             p = {k: [] for k in rec['time']}
             for rec in self.records:
@@ -454,15 +464,16 @@ class Trainer:
             axes['Time'].legend(ncol=1, fontsize=0.7*fi.fontsize)
             axes['Time'].set_title('Time (s)')
         axes['Time2'] = axes['Time'].twinx()
-        axes['Time2'].plot(x, np.cumsum(p[-1]), color='#e17055')
-        def seconds_to_hms(x, pos):
-            d = int(x // 86400)
-            h = int((x % 86400) // 3600)
-            m = int((x % 3600) // 60)
-            s = int(x % 60)
-            return (f'{d}d ' if d > 0 else '') + f'{h:02}:{m:02}:{s:02}'
-        axes['Time2'].yaxis.set_major_formatter(plt.FuncFormatter(seconds_to_hms))
-        axes['Time2'].tick_params(axis='both', direction='in', length=2, pad=2)
+        if 'time' in rec and rec_time_is_dict:
+            axes['Time2'].plot(x, np.cumsum(p[-1]), color='#e17055')
+            def seconds_to_hms(x, pos):
+                d = int(x // 86400)
+                h = int((x % 86400) // 3600)
+                m = int((x % 3600) // 60)
+                s = int(x % 60)
+                return (f'{d}d ' if d > 0 else '') + f'{h:02}:{m:02}:{s:02}'
+            axes['Time2'].yaxis.set_major_formatter(plt.FuncFormatter(seconds_to_hms))
+            axes['Time2'].tick_params(axis='both', direction='in', length=2, pad=2)
 
         fig.tight_layout()
         if not abs_path: path = os.path.join(self.args.save_dir, path)

@@ -124,7 +124,8 @@ class MetaAIGenerator:
             next_en += next_pos + 1
             n_empty -= next_pos + 1
             replace = empty_nodes[next_en]
-            other = op()
+            # op已经是实例化的对象，不需要再调用
+            other = op
             sentinel.replace(replace, other)
             empty_nodes.extend(other.operands)
             n_empty += op.n_operands
@@ -171,7 +172,9 @@ class MetaAIGenerator:
         if n_operands == 1:
             return np.random.choice(self.unary, p=self.unary_prob)
         else:
-            return np.random.choice(self.binary, p=self.binary_prob)
+            # 为二元操作添加nettype参数
+            op = np.random.choice(self.binary, p=self.binary_prob)
+            return op(nettype='scalar')
 
     def generate_next_pos(self, n_empty, n_operators):
         """
