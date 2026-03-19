@@ -59,6 +59,25 @@ MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python ./demos/search_gp4mdl.py \
 ```
 运行结果会打印到终端，并保存到 `./results/search/` 和 `./results/aggregate.csv`。
 
+如果你已经把本地 PMLB 仓库放到 `./pmlb/datasets`，也可以直接对某个真实数据集做 GPU 推理：
+```bash
+MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python ./experiments/pmlb/pmlb_inference.py \
+  --dataset 1027_ESL \
+  --load_model ./weights/checkpoint.pth \
+  --device cuda:0
+```
+
+如果要跑更正式一点的配置，可以显式指定搜索步数和采样行数：
+```bash
+MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python ./experiments/pmlb/pmlb_inference.py \
+  --dataset 1027_ESL \
+  --load_model ./weights/checkpoint.pth \
+  --device cuda:0 \
+  --n_iter 1000 \
+  --sample_num 200
+```
+结果会追加保存到 `./experiments/pmlb/results/pmlb_inference.csv`，每次运行的详细日志和 `result.json` 会写到 `./experiments/pmlb/results/<name>/`。
+
 If you wanna test this model on Feynman & Strogatz dataset, you have to:
 1. Install PMLB package from https://github.com/EpistasisLab/pmlb (`pip install pmlb` is not recommended since it does not contains these datasets, see https://epistasislab.github.io/pmlb/using-python.html)
 ```bash
