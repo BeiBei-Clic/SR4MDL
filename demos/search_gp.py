@@ -9,9 +9,15 @@ import traceback
 import numpy as np
 import nd2py as nd
 import pandas as pd
+import sys
 from socket import gethostname
 from argparse import ArgumentParser
 from setproctitle import setproctitle
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 from nd2py.utils import seed_all, init_logger, AutoGPU, AttrDict
 from sr4mdl.utils import parse_parser, RMSE_score, R2_score
 from sr4mdl.search import GP

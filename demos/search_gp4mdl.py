@@ -9,9 +9,15 @@ import traceback
 import numpy as np
 import nd2py as nd
 import pandas as pd
+import sys
 from socket import gethostname
 from argparse import ArgumentParser
 from setproctitle import setproctitle
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 from nd2py.utils import seed_all, init_logger, AutoGPU, AttrDict
 from sr4mdl.utils import parse_parser, RMSE_score, R2_score
 from sr4mdl.search import GP4MDL
@@ -50,6 +56,12 @@ setproctitle(f'{args.name}@YuZihan')
 if args.device == 'auto':
     args.device = AutoGPU().choice_gpu(memory_MB=1486, interval=15)
 args.function = args.function.replace(' ', '')
+
+
+def get_load_device(device):
+    if str(device).startswith('cuda') and not torch.cuda.is_available():
+        return 'cpu'
+    return device
 
 
 def search():
@@ -108,7 +120,7 @@ def search():
     logger.note('\n'.join(f'{k}: {v if not isinstance(v, list) else "[" + ", ".join(v) + "]"}' for k, v in log.items()))
 
     tokenizer = Tokenizer(-100, 100, 4, args.max_var)
-    state_dict = torch.load(args.load_model)
+    state_dict = torch.load(args.load_model, map_location=get_load_device(args.device), weights_only=False)
     model_args = AttrDict(dropout=0.1, d_model=512, d_input=64, d_output=512, n_TE_layers=8, max_len=50, max_param=5, max_var=args.max_var, uniform_sample_number=args.sample_num,device=args.device, use_SENet=True, use_old_model=args.use_old_model)
     model = MDLformer(model_args, state_dict['xy_token_list'])
     model.load(state_dict['xy_encoder'], state_dict['xy_token_list'], strict=True)

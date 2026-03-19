@@ -28,7 +28,8 @@ if args.device == 'auto':
     args.device = AutoGPU().choice_gpu(memory_MB=1486, interval=15)
 
 tokenizer = Tokenizer(-100, 100, 4, args.max_var)
-state_dict = torch.load(args.load_model, map_location=args.device, weights_only=False)
+load_device = 'cpu' if str(args.device).startswith('cuda') and not torch.cuda.is_available() else args.device
+state_dict = torch.load(args.load_model, map_location=load_device, weights_only=False)
 mdlformer = MDLformer(args, state_dict['xy_token_list'])
 mdlformer.load(state_dict['xy_encoder'], state_dict['xy_token_list'], strict=True)
 mdlformer.eval()

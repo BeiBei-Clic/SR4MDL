@@ -6,20 +6,17 @@
 
 ## Installation
 
-Before starting, you may wanna create a virtual environment to avoid conflicts with other packages:
+推荐直接用 `uv` 在仓库根目录创建虚拟环境：
 ```bash
-conda create --prefix ./venv python=3.12 -y
-conda activate ./venv
+export UV_CACHE_DIR=/tmp/uv-cache
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python -e . \
+  torch-geometric \
+  openai \
+  google-genai \
+  "git+https://github.com/yuzhTHU/nd2py"
 ```
-Our code is based on nd2py library, which is a symbolic system written in pure Python. You can install it via pip or clone the repo:
-```bash
-# Install via pip
-pip install git+https://github.com/yuzhTHU/nd2py
-
-# Or clone the repo
-git clone https://github.com/yuzhTHU/nd2py nd2py_package
-pip install ./nd2py_package
-```
+其中 `nd2py` 当前会间接依赖 `torch-geometric`、`openai` 和 `google-genai`，上面的命令已经一并安装。
 
 ## Train
 
@@ -38,17 +35,29 @@ python test.py --name demo --load_model ./results/train/demo/checkpoint.pth
 
 ## Symbolic Regression
 
-To use the trained MDLformer model for symbolic regression, you have to:
-1. Move the trained model to `./weights/checkpoint.pth`. (We provided a trained model in the Github release page as well as [Dropbox](https://www.dropbox.com/scl/fi/x1te3v1lmsrrr07r8uunr/checkpoint.pth?rlkey=v7ip8r6b4xuy4pdtk33jsyan5&st=iv36jfg2&dl=1))
-2. Run the following command:
+下面这组命令可以直接完成“下载官方权重 + 用 GPU 跑通最小示例”：
 ```bash
-python ./demos/search_mcts4mdl.py --load_model ./weights/checkpoint.pth --name demo --function "f=x1+x2*sin(x3)"
+mkdir -p weights
+curl -L "https://www.dropbox.com/scl/fi/x1te3v1lmsrrr07r8uunr/checkpoint.pth?rlkey=v7ip8r6b4xuy4pdtk33jsyan5&st=iv36jfg2&dl=1" \
+  -o ./weights/checkpoint.pth
+MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python ./demos/search_mcts4mdl.py \
+  --load_model ./weights/checkpoint.pth \
+  --name demo \
+  --device cuda:0 \
+  --function "f=x1+x2*sin(x3)"
 ```
-or
+
+如果你只想先做一个更快的 smoke test，可以额外加上 `--n_iter 5 --sample_num 32`。
+
+也可以改用 GP4MDL：
 ```bash
-python ./demos/search_gp4mdl.py --load_model ./weights/checkpoint.pth --name demo --function "f=x1+x2*sin(x3)"
+MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python ./demos/search_gp4mdl.py \
+  --load_model ./weights/checkpoint.pth \
+  --name demo \
+  --device cuda:0 \
+  --function "f=x1+x2*sin(x3)"
 ```
-The running result will be shown in the terminal, as well as saved in the `./results/search/` directory and `./results/aggregate.csv` file.
+运行结果会打印到终端，并保存到 `./results/search/` 和 `./results/aggregate.csv`。
 
 If you wanna test this model on Feynman & Strogatz dataset, you have to:
 1. Install PMLB package from https://github.com/EpistasisLab/pmlb (`pip install pmlb` is not recommended since it does not contains these datasets, see https://epistasislab.github.io/pmlb/using-python.html)

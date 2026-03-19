@@ -1,4 +1,5 @@
 import os
+import csv
 import json
 import yaml
 import time
@@ -9,9 +10,15 @@ import traceback
 import numpy as np
 import nd2py as nd2
 import pandas as pd
+import sys
 from socket import gethostname
 from argparse import ArgumentParser
 from setproctitle import setproctitle
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 from nd2py.utils import seed_all, init_logger, AutoGPU, AttrDict
 from sr4mdl.utils import parse_parser, RMSE_score, R2_score
 from sr4mdl.search import MCTS4MDL
@@ -53,6 +60,12 @@ setproctitle(f'{args.name}@YuZihan')
 if args.device == 'auto':
     args.device = AutoGPU().choice_gpu(memory_MB=1486, interval=15)
 args.function = args.function.replace(' ', '')
+
+
+def get_load_device(device):
+    if str(device).startswith('cuda') and not torch.cuda.is_available():
+        return 'cpu'
+    return device
 
 
 def search():
@@ -111,7 +124,7 @@ def search():
     logger.note('\n'.join(f'{k}: {v if not isinstance(v, list) else "[" + ", ".join(v) + "]"}' for k, v in log.items()))
 
     tokenizer = Tokenizer(-100, 100, 4, args.max_var)
-    state_dict = torch.load(args.load_model)
+    state_dict = torch.load(args.load_model, map_location=get_load_device(args.device), weights_only=False)
     model_args = AttrDict(dropout=0.1, d_model=512, d_input=64, d_output=512, n_TE_layers=8, max_len=50, max_param=5, max_var=args.max_var, uniform_sample_number=args.sample_num,device=args.device, use_SENet=True, use_old_model=args.use_old_model)
     model = MDLformer(model_args, state_dict['xy_token_list'])
     model.load(state_dict['xy_encoder'], state_dict['xy_token_list'], strict=True)
@@ -164,16 +177,17 @@ def search():
 
     # aggregate results to aggregate.csv
     save_path = './results/aggregate.csv'
+    fieldnames = [
+        'success', 'name', 'exp', 'n_iter', 'duration', 'seed', 'rmse', 'r2',
+        'result', 'target', 'date', 'host', 'load_model', 'model', 'sample_num',
+    ]
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    if not os.path.exists(save_path):
-        with open(save_path, 'w') as f:
-            f.write('\t'.join([
-                'success','name','exp','n_iter','duration','seed','rmse','r2',
-                'result','target','date','host','load_model','model','sample_num'
-            ]) + '\n')
-    with open(save_path, 'a') as f:
-        keys = open(save_path, 'r').readline().split('\t')
-        f.write(','.join(str(result.get(k, '')) for k in keys) + '\n')
+    write_header = not os.path.exists(save_path) or os.path.getsize(save_path) == 0
+    with open(save_path, 'a', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+        writer.writerow({key: result.get(key, '') for key in fieldnames})
 
 
 if __name__ == '__main__':
