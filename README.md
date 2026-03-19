@@ -78,7 +78,7 @@ MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python ./experiments/pmlb/pmlb_inference.
 ```
 结果会追加保存到 `./experiments/pmlb/results/pmlb_inference.csv`，每次运行的详细日志和 `result.json` 会写到 `./experiments/pmlb/results/<name>/`。
 
-先用很小参数验证本地 PMLB 批量 GPU 推理和 CSV 落盘：
+先用很小参数验证本地 PMLB 批量 GPU 推理、无噪声流程和 CSV 落盘：
 ```bash
 MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python ./experiments/pmlb/pmlb_batch_inference.py \
   --device cuda:0 \
@@ -88,12 +88,21 @@ MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python ./experiments/pmlb/pmlb_batch_infe
   --n_iter 5
 ```
 
-正式全量批跑时默认直接指定要用的 GPU：
+正式全量无噪声批跑时直接指定要用的 GPU：
 ```bash
 MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python ./experiments/pmlb/pmlb_batch_inference.py \
-  --device cuda:3
+  --device cuda:3 \
+  --n_iter 100
 ```
-批量结果默认写到 `./experiments/pmlb/results/pmlb_batch_results.csv`。
+
+带噪声实验时额外传目标值噪声强度，噪声按 `target` 标准差缩放：
+```bash
+MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python ./experiments/pmlb/pmlb_batch_inference.py \
+  --device cuda:2 \
+  --n_iter 100 \
+  --noise_strength 0.1
+```
+批量结果默认写到 `./experiments/pmlb/results/pmlb_batch_inference_noise_<noise>.csv`，结果 CSV 也会额外记录 `noise_strength` 列。
 
 If you wanna test this model on Feynman & Strogatz dataset, you have to:
 1. Install PMLB package from https://github.com/EpistasisLab/pmlb (`pip install pmlb` is not recommended since it does not contains these datasets, see https://epistasislab.github.io/pmlb/using-python.html)

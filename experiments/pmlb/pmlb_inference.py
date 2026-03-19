@@ -1,5 +1,6 @@
 import csv
 import gzip
+import hashlib
 import json
 import logging
 import os
@@ -56,6 +57,16 @@ SINGLE_RESULT_FIELDS = [
     "sample_num",
     "expression",
 ]
+
+
+def validate_noise_strength(noise_strength):
+    if noise_strength < 0:
+        raise ValueError(f"noise_strength must be non-negative, got {noise_strength}.")
+    return float(noise_strength)
+
+
+def format_noise_strength(noise_strength):
+    return format(float(noise_strength), "g")
 
 
 def parse_device(device):
@@ -137,6 +148,24 @@ def load_dataset(dataset, datasets_dir, max_rows):
     }
 
 
+def apply_target_noise(dataset_info, noise_strength, noise_seed):
+    noise_strength = validate_noise_strength(noise_strength)
+    if noise_strength == 0:
+        return dataset_info
+
+    dataset_key = f"{dataset_info['dataset']}::{noise_seed}"
+    seed_bytes = hashlib.sha256(dataset_key.encode("utf-8")).digest()[:8]
+    rng = np.random.default_rng(int.from_bytes(seed_bytes, byteorder="big", signed=False))
+
+    y = dataset_info["y"]
+    sigma = noise_strength * float(np.std(y))
+    noisy_y = y + rng.normal(loc=0.0, scale=sigma, size=y.shape)
+
+    updated_info = dict(dataset_info)
+    updated_info["y"] = noisy_y.astype(np.float64, copy=False)
+    return updated_info
+
+
 def load_model_bundle(model_path, device, max_input_points, max_var, use_old_model):
     tokenizer = Tokenizer(-100, 100, 4, max_var)
     state_dict = torch.load(model_path, map_location=device, weights_only=False)
@@ -178,7 +207,25 @@ def create_estimator(model_bundle, n_iter, max_input_points, keep_vars, normaliz
     )
 
 
-def run_single_inference(dataset_info, model_bundle, n_iter, max_input_points, keep_vars, normalize_y, normalize_all, remove_abnormal, logger=None, save_path=None):
+def run_single_inference(
+    dataset_info,
+    model_bundle,
+    n_iter,
+    max_input_points,
+    keep_vars,
+    normalize_y,
+    normalize_all,
+    remove_abnormal,
+    noise_strength=0.0,
+    noise_seed=0,
+    logger=None,
+    save_path=None,
+):
+    dataset_info = apply_target_noise(
+        dataset_info=dataset_info,
+        noise_strength=noise_strength,
+        noise_seed=noise_seed,
+    )
     est = create_estimator(
         model_bundle=model_bundle,
         n_iter=n_iter,
@@ -193,6 +240,7 @@ def run_single_inference(dataset_info, model_bundle, n_iter, max_input_points, k
         logger.note(f"dataset: {dataset_info['dataset']}")
         logger.note(f"path: {dataset_info['dataset_path']}")
         logger.note(f"rows: {dataset_info['rows']}, features: {dataset_info['n_features']}")
+        logger.note(f"noise_strength: {format_noise_strength(noise_strength)}")
 
     start_time = time.time()
     est.fit(dataset_info["X"], dataset_info["y"], use_tqdm=False)
@@ -285,6 +333,8 @@ def main():
         normalize_y=args.normalize_y,
         normalize_all=args.normalize_all,
         remove_abnormal=args.remove_abnormal,
+        noise_strength=0.0,
+        noise_seed=0,
         logger=logger,
         save_path=os.path.join(args.run_dir, "records.json"),
     )
