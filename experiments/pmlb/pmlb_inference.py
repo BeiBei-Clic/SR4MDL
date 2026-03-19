@@ -158,8 +158,8 @@ def apply_target_noise(dataset_info, noise_strength, noise_seed):
     rng = np.random.default_rng(int.from_bytes(seed_bytes, byteorder="big", signed=False))
 
     y = dataset_info["y"]
-    sigma = noise_strength * float(np.std(y))
-    noisy_y = y + rng.normal(loc=0.0, scale=sigma, size=y.shape)
+    noise = rng.normal(loc=0.0, scale=noise_strength, size=y.shape)
+    noisy_y = y * (1.0 + noise)
 
     updated_info = dict(dataset_info)
     updated_info["y"] = noisy_y.astype(np.float64, copy=False)
