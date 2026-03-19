@@ -104,6 +104,11 @@ MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python ./experiments/pmlb/pmlb_batch_infe
 ```
 批量结果默认写到 `./experiments/pmlb/results/pmlb_batch_inference_noise_<noise>.csv`，结果 CSV 也会额外记录 `noise_strength` 列。
 
+汇总四种噪声强度下的 Feynman、Strogatz 和 Black-box 结果：
+```bash
+PYTHONPATH=. .venv/bin/python ./experiments/pmlb/pmlb_results_summary.py --input_csvs ./experiments/pmlb/results/pmlb_batch_inference_noise_0.csv ./experiments/pmlb/results/pmlb_batch_inference_noise_0.001.csv ./experiments/pmlb/results/pmlb_batch_inference_noise_0.01.csv ./experiments/pmlb/results/pmlb_batch_inference_noise_0.1.csv --output_csv ./experiments/pmlb/results/pmlb_results_summary.csv
+```
+
 If you wanna test this model on Feynman & Strogatz dataset, you have to:
 1. Install PMLB package from https://github.com/EpistasisLab/pmlb (`pip install pmlb` is not recommended since it does not contains these datasets, see https://epistasislab.github.io/pmlb/using-python.html)
 ```bash
